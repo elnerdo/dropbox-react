@@ -4,23 +4,20 @@ import DropboxContainer from './components/dropboxcontainer.js';
 import CollapseFolderGroup from './components/collapsefoldergroup.js';
 import CollapseFolder from './components/collapsefolder.js';
 
-const node = document.getElementById('dropbox-container');
 
+const node = document.getElementById('dropbox-container');
 const pathnameParts = window.location.pathname.split('/')
 
-const config = {};
+var config = {};
 
-config.title  = pathnameParts[pathnameParts.length - 2]
-config.language = pathnameParts[pathnameParts.length - 1] 
+config.path = node.getAttribute('path');
+config.language = node.getAttribute('language');
+config.filter = JSON.parse(node.getAttribute('filter'));
+config.map = JSON.parse(node.getAttribute('map'));
 
-const dropboxOpts = JSON.parse(node.getAttribute('dropboxOpts'));
+let host = window.location.hostname
+let dataroute = '/dropbox/data'
 
-for(let param in dropboxOpts) {
-  console.log(param, dropboxOpts[param]);
-  config[param] = dropboxOpts[param];
-}
+let datasource = host + dataroute
 
-console.log(dropboxOpts);
-console.log(dropboxOpts.foo);
-
-ReactDOM.render(<DropboxContainer config={config} datasource="/dropbox/data"/>, node);
+ReactDOM.render(<DropboxContainer config={config} datasource={datasource}/>, node);

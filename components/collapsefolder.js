@@ -1,7 +1,7 @@
 import React, { PropTypes } from 'react';
 import { Button, Collapse, Well } from 'react-bootstrap';
 import DownloadFile from './downloadfile.js';
-
+import { CollapseFolderStyle } from './styles/collapsefolderstyle.js';
 
 const propTypes = {
   title: PropTypes.string.isRequired,
@@ -9,7 +9,8 @@ const propTypes = {
 };
 
 const defaultProps = {
-  files: {}
+  files: {},
+  style: CollapseFolderStyle
 };
 
 class CollapseFolder extends React.Component {
@@ -21,7 +22,7 @@ class CollapseFolder extends React.Component {
   
   render() {
 
-    const { files, title } = this.props;
+    const { files, title, style } = this.props;
 
     const folderContent = []
 
@@ -30,18 +31,19 @@ class CollapseFolder extends React.Component {
     }
 
     return (
-      <div>
-        <Button onClick={ ()=> this.setState({ open: !this.state.open })}>
-        {title}
-        </Button>
-          <Collapse in={this.state.open}>
-            <div>
-              <Well>
-                {folderContent}
-              </Well>
-            </div>
-          </Collapse>
+      <div style={style.imko}>
+        <div onClick={() => this.setState({open: !this.state.open})}>
+          <span style={this.state.open ? style.open : style.close}>{this.state.open ? '-' : '+'}</span>
+          <span>{title}</span>
         </div>
+        <Collapse in={this.state.open} style={style.collapse}>
+          <div>
+            <Well>
+              {folderContent}
+            </Well>
+          </div>
+        </Collapse>
+      </div>
     );
   }
 }

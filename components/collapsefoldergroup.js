@@ -1,13 +1,16 @@
 import React, { PropTypes } from 'react';
 import CollapseFolder from './collapsefolder.js';
+import { CollapseFolderGroupStyle } from './styles/collapsefoldergroupstyle.js';
 
 
 const propTypes = {
-  folders: PropTypes.object
+  folders: PropTypes.object,
+  map: PropTypes.object
 };
 
 const defaultProps = {
-  folders: {}
+  folders: {},
+  style: CollapseFolderGroupStyle.imko
 }
 
 class CollapseFolderGroup extends React.Component {
@@ -18,16 +21,19 @@ class CollapseFolderGroup extends React.Component {
 
   render() {
 
-    const { title, folders } = this.props;
+    const { title, folders, map, style } = this.props;
     let collapseFolders = []
 
+
     for(let folder in folders) {
-      collapseFolders.push(<CollapseFolder key={folder} title={folder} files={folders[folder]}/>)
+      let alias = folder in map ? map[folder] : folder
+      collapseFolders.push(<CollapseFolder key={folder} title={alias} files={folders[folder]}/>)
     }
 
+
     return (
-      <div>
-        <h3>{title}</h3>
+      <div style={style}>
+        <h3>{title}</h3> 
         {collapseFolders}
       </div>
     )

@@ -69,25 +69,21 @@
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 	var node = document.getElementById('dropbox-container');
-
 	var pathnameParts = window.location.pathname.split('/');
 
 	var config = {};
 
-	config.title = pathnameParts[pathnameParts.length - 2];
-	config.language = pathnameParts[pathnameParts.length - 1];
+	config.path = node.getAttribute('path');
+	config.language = node.getAttribute('language');
+	config.filter = JSON.parse(node.getAttribute('filter'));
+	config.map = JSON.parse(node.getAttribute('map'));
 
-	var dropboxOpts = JSON.parse(node.getAttribute('dropboxOpts'));
+	var host = window.location.hostname;
+	var dataroute = '/dropbox/data';
 
-	for (var param in dropboxOpts) {
-	  console.log(param, dropboxOpts[param]);
-	  config[param] = dropboxOpts[param];
-	}
+	var datasource = host + dataroute;
 
-	console.log(dropboxOpts);
-	console.log(dropboxOpts.foo);
-
-	_reactDom2.default.render(_react2.default.createElement(_dropboxcontainer2.default, { config: config, datasource: '/dropbox/data' }), node);
+	_reactDom2.default.render(_react2.default.createElement(_dropboxcontainer2.default, { config: config, datasource: datasource }), node);
 
 /***/ },
 /* 1 */
@@ -20392,6 +20388,8 @@
 	  value: true
 	});
 
+	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
 	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 	var _react = __webpack_require__(1);
@@ -20402,7 +20400,9 @@
 
 	var _collapsefoldergroup2 = _interopRequireDefault(_collapsefoldergroup);
 
-	var _jquery = __webpack_require__(437);
+	var _dropboxcontainerstyle = __webpack_require__(443);
+
+	var _jquery = __webpack_require__(440);
 
 	var _jquery2 = _interopRequireDefault(_jquery);
 
@@ -20412,25 +20412,38 @@
 
 	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // TODO: validate config data, set default values if something is wrong or undefined.
+	//       maybe use state for config.
 
 	var propTypes = {
-	  config: _react.PropTypes.object.isRequired
+	  config: _react.PropTypes.object
 	};
 
 	var defaultProps = {
+	  style: _dropboxcontainerstyle.DropboxContainerStyle.imko,
 	  prefixToHumanReadable: {
 	    'en': {
-	      'sme_': 'SME_ENGLISH',
-	      'gbi_': 'GBI_ENGLISH',
-	      'cti_': 'CTI_ENGLISH'
+	      'sme': 'Soil Moisture / Environment',
+	      'gbi': 'Grain Moisture / Bulk Industry',
+	      'cti': 'Construction Industry'
 	    },
 	    'de': {
-	      'sme_': 'SME_DEUTSCH',
-	      'gbi_': 'GBI_DEUTSCH',
-	      'cti_': 'CTI_DEUTSCH'
+	      'sme': 'Bodenfeuchte / Umwelt',
+	      'gbi': 'Kornfeuchte / Schüttgutindustrie',
+	      'cti': 'Bauindustrie'
 	    }
-	  }
+	  },
+	  defaultPath: function defaultPath() {
+	    var pathParts = window.location.href.split('/');
+	    return pathParts[pathParts.length - 1];
+	  },
+	  defaultLanguage: function defaultLanguage() {
+	    var pathParts = window.location.href.split('/');
+	    var lang = pathParts.includes('de') ? 'de' : 'en';
+	    return lang;
+	  },
+	  defaultMap: {},
+	  defaultFilter: []
 	};
 
 	var DropboxContainer = function (_React$Component) {
@@ -20443,55 +20456,107 @@
 
 	    _this.state = { data: {} };
 	    _this.setData = _this.setData.bind(_this);
+	    _this.getConfig = _this.getConfig.bind(_this);
+	    _this.getGroups = _this.getGroups.bind(_this);
 	    return _this;
 	  }
 
 	  _createClass(DropboxContainer, [{
 	    key: 'componentDidMount',
 	    value: function componentDidMount() {
-	      var config = this.props.config;
+	      var datasource = this.props.datasource;
 
 	      var setData = this.setData;
+	      var config = this.getConfig();
 
-	      var ws = new WebSocket("ws://192.168.1.207:8080/dropbox/data");
+	      var ws = new WebSocket('ws://' + datasource);
+
 	      ws.onopen = function () {
 	        ws.send("Hello, world");
 	      };
+
 	      ws.onmessage = function (evt) {
-	        var alldata = JSON.parse(evt.data);
-	        //const data = alldata["{{ folder }}"]["{{ group}}"]["folders"]["{{ f }}"];
-	        setData(alldata[config.title]);
+	        var data = JSON.parse(evt.data);
+	        setData(data[config.path]);
 	      };
 	    }
 	  }, {
 	    key: 'setData',
 	    value: function setData(data) {
+	      var config = this.getConfig();
+	      // only apply filter if there is a least one
+	      if (config.filter.length > 0) {
+	        for (var folder in data.folders) {
+	          if (!config.filter.includes(folder)) {
+	            delete data.folders[folder];
+	          }
+	        }
+	      }
 	      this.setState({ data: data });
+	    }
+	  }, {
+	    key: 'getConfig',
+	    value: function getConfig() {
+	      var _props = this.props;
+	      var config = _props.config;
+	      var defaultPath = _props.defaultPath;
+	      var defaultMap = _props.defaultMap;
+	      var defaultLanguage = _props.defaultLanguage;
+	      var defaultFilter = _props.defaultFilter;
+
+
+	      var _config = {};
+
+	      _config.path = config.path == undefined ? defaultPath() : config.path;
+	      _config.map = config.map == undefined ? defaultMap : config.map;
+	      _config.language = config.language == undefined ? defaultLanguage() : config.language;
+	      _config.filter = config.filter == undefined ? defaultFilter : config.filter;
+
+	      return _config;
+	    }
+	  }, {
+	    key: 'getGroups',
+	    value: function getGroups() {
+	      var data = this.state.data;
+
+	      var groups = {};
+	      for (var folder in data.folders) {
+	        var _folder$split = folder.split('_', 2);
+
+	        var _folder$split2 = _slicedToArray(_folder$split, 2);
+
+	        var prefix = _folder$split2[0];
+	        var name = _folder$split2[1];
+
+	        if (!(prefix in groups)) {
+	          groups[prefix] = {};
+	        }
+	        groups[prefix][name] = data.folders[folder];
+	      }
+	      return groups;
 	    }
 	  }, {
 	    key: 'render',
 	    value: function render() {
-	      var _props = this.props;
-	      var config = _props.config;
-	      var prefixToHumanReadable = _props.prefixToHumanReadable;
-	      var data = this.state.data;
+	      var _props2 = this.props;
+	      var prefixToHumanReadable = _props2.prefixToHumanReadable;
+	      var style = _props2.style;
 
-
+	      var config = this.getConfig();
+	      var groups = this.getGroups();
 	      var collapseFolder = [];
 
-	      for (var grp in data) {
+	      console.log(config);
+	      console.log(groups);
+
+	      for (var grp in groups) {
 	        var title = prefixToHumanReadable[config.language][grp];
-	        collapseFolder.push(_react2.default.createElement(_collapsefoldergroup2.default, { title: title, key: grp, folders: data[grp].folders }));
+	        collapseFolder.push(_react2.default.createElement(_collapsefoldergroup2.default, { title: title, key: grp, folders: groups[grp], map: config.map }));
 	      }
 
 	      return _react2.default.createElement(
 	        'div',
-	        null,
-	        _react2.default.createElement(
-	          'h3',
-	          null,
-	          config.title
-	        ),
+	        { style: style },
 	        collapseFolder
 	      );
 	    }
@@ -20525,6 +20590,8 @@
 
 	var _collapsefolder2 = _interopRequireDefault(_collapsefolder);
 
+	var _collapsefoldergroupstyle = __webpack_require__(442);
+
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -20534,11 +20601,13 @@
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 	var propTypes = {
-	  folders: _react.PropTypes.object
+	  folders: _react.PropTypes.object,
+	  map: _react.PropTypes.object
 	};
 
 	var defaultProps = {
-	  folders: {}
+	  folders: {},
+	  style: _collapsefoldergroupstyle.CollapseFolderGroupStyle.imko
 	};
 
 	var CollapseFolderGroup = function (_React$Component) {
@@ -20556,16 +20625,19 @@
 	      var _props = this.props;
 	      var title = _props.title;
 	      var folders = _props.folders;
+	      var map = _props.map;
+	      var style = _props.style;
 
 	      var collapseFolders = [];
 
 	      for (var folder in folders) {
-	        collapseFolders.push(_react2.default.createElement(_collapsefolder2.default, { key: folder, title: folder, files: folders[folder] }));
+	        var alias = folder in map ? map[folder] : folder;
+	        collapseFolders.push(_react2.default.createElement(_collapsefolder2.default, { key: folder, title: alias, files: folders[folder] }));
 	      }
 
 	      return _react2.default.createElement(
 	        'div',
-	        null,
+	        { style: style },
 	        _react2.default.createElement(
 	          'h3',
 	          null,
@@ -20606,6 +20678,8 @@
 
 	var _downloadfile2 = _interopRequireDefault(_downloadfile);
 
+	var _collapsefolderstyle = __webpack_require__(441);
+
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -20620,7 +20694,8 @@
 	};
 
 	var defaultProps = {
-	  files: {}
+	  files: {},
+	  style: _collapsefolderstyle.CollapseFolderStyle
 	};
 
 	var CollapseFolder = function (_React$Component) {
@@ -20643,6 +20718,7 @@
 	      var _props = this.props;
 	      var files = _props.files;
 	      var title = _props.title;
+	      var style = _props.style;
 
 
 	      var folderContent = [];
@@ -20653,17 +20729,26 @@
 
 	      return _react2.default.createElement(
 	        'div',
-	        null,
+	        { style: style.imko },
 	        _react2.default.createElement(
-	          _reactBootstrap.Button,
+	          'div',
 	          { onClick: function onClick() {
 	              return _this2.setState({ open: !_this2.state.open });
 	            } },
-	          title
+	          _react2.default.createElement(
+	            'span',
+	            { style: this.state.open ? style.open : style.close },
+	            this.state.open ? '-' : '+'
+	          ),
+	          _react2.default.createElement(
+	            'span',
+	            null,
+	            title
+	          )
 	        ),
 	        _react2.default.createElement(
 	          _reactBootstrap.Collapse,
-	          { 'in': this.state.open },
+	          { 'in': this.state.open, style: style.collapse },
 	          _react2.default.createElement(
 	            'div',
 	            null,
@@ -39993,7 +40078,15 @@
 
 	var _reactBootstrap = __webpack_require__(171);
 
-	var _jquery = __webpack_require__(437);
+	var _spin = __webpack_require__(437);
+
+	var _spin2 = _interopRequireDefault(_spin);
+
+	var _downloadfilestyle = __webpack_require__(438);
+
+	var _iconstyle = __webpack_require__(439);
+
+	var _jquery = __webpack_require__(440);
 
 	var _jquery2 = _interopRequireDefault(_jquery);
 
@@ -40005,27 +40098,15 @@
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	/*
-	'impbus2-protocol-pico_0-22.pdf': {
-	  'media_info': None,
-	  'id': 'id:xjIj_tkwGh4AAAAAAAAW6A',
-	  'name': 'IMPBus2-Protocol-Pico_0-22.pdf',
-	  'rev': '92e0008107f0',
-	  'path_lower': '/imko/protocol/sme_pico/impbus2-protocol-pico_0-22.pdf',
-	  'size': 300089,
-	  'client_modified': 'September 08, 2010',
-	  'parent_shared_folder_id': '8456176',
-	  'server_modified': 'May 29, 2015'
-	}
-	*/
-
 	var propTypes = {
 	  file: _react.PropTypes.object.isRequired,
 	  endpoint: _react.PropTypes.string
 	};
 
 	var defaultProps = {
-	  endpoint: '/dropbox/download'
+	  endpoint: '/dropbox/download',
+	  style: _downloadfilestyle.DownloadFileStyle,
+	  iconStyle: _iconstyle.IconStyle
 	};
 
 	var DownloadFile = function (_React$Component) {
@@ -40039,8 +40120,11 @@
 	    _this.state = { showModal: false };
 	    _this.open = _this.open.bind(_this);
 	    _this.close = _this.close.bind(_this);
+	    _this.handleHover = _this.handleHover.bind(_this);
+	    _this.handleLeave = _this.handleLeave.bind(_this);
 	    _this.download = _this.download.bind(_this);
 	    _this.formatFileSize = _this.formatFileSize.bind(_this);
+	    _this.getIcon = _this.getIcon.bind(_this);
 	    return _this;
 	  }
 
@@ -40055,18 +40139,57 @@
 	      this.setState({ showModal: false });
 	    }
 	  }, {
+	    key: 'handleHover',
+	    value: function handleHover(event) {
+	      (0, _jquery2.default)(event.target).css('background-color', '#ccc');
+	    }
+	  }, {
+	    key: 'handleLeave',
+	    value: function handleLeave(event) {
+	      (0, _jquery2.default)(event.target).css('background-color', 'white');
+	    }
+	  }, {
 	    key: 'download',
 	    value: function download(event) {
 	      var _props = this.props;
 	      var endpoint = _props.endpoint;
 	      var file = _props.file;
 
+	      var target = (0, _jquery2.default)(event.target).parent().find('.spinner')[0];
+	      var opts = {
+	        lines: 13,
+	        length: 28,
+	        width: 14,
+	        radius: 42,
+	        scale: 0.5,
+	        corners: 1,
+	        color: '#000',
+	        rotate: 0,
+	        direction: 1,
+	        speed: 1,
+	        trail: 60,
+	        fps: 20,
+	        zIndex: 2e9,
+	        className: 'spinner',
+	        bottom: '50%',
+	        left: '50%',
+	        shadow: false,
+	        hwaccel: false,
+	        position: 'absolute'
+	      };
+
+	      var spinner = new _spin2.default(opts).spin(target);
+	      var close = this.close;
 	      var data = (0, _jquery2.default)(event.target).parent().find('form').serialize();
 
 	      _jquery2.default.ajax({
 	        url: endpoint,
 	        type: 'POST',
-	        data: data
+	        data: data,
+	        complete: function complete(data) {
+	          spinner.stop();
+	          close();
+	        }
 	      });
 	      return false;
 	    }
@@ -40096,21 +40219,40 @@
 	      return Math.round(size * 100) / 100 + unit;
 	    }
 	  }, {
+	    key: 'getIcon',
+	    value: function getIcon() {
+	      var iconStyle = this.props.iconStyle;
+
+	      var ext = this.props.file.name.split('.')[this.props.file.name.split('.').length - 1];
+	      var icon = iconStyle['_blank'];
+	      for (var attr in iconStyle) {
+	        if (ext == attr) {
+	          icon = iconStyle[attr];
+	          break;
+	        }
+	      }
+	      return icon;
+	    }
+	  }, {
 	    key: 'render',
 	    value: function render() {
 	      var _props2 = this.props;
 	      var file = _props2.file;
 	      var endpoint = _props2.endpoint;
+	      var style = _props2.style;
+	      var iconStyle = _props2.iconStyle;
 
 
 	      var filesize = this.formatFileSize(file.size);
 
+	      var icon = this.getIcon();
+
 	      return _react2.default.createElement(
 	        'div',
-	        null,
+	        { style: style.imko },
 	        _react2.default.createElement(
 	          'div',
-	          { onClick: this.open },
+	          { onClick: this.open, style: Object.assign({}, icon, iconStyle.default), onMouseOver: this.handleHover, onMouseLeave: this.handleLeave },
 	          file.name
 	        ),
 	        _react2.default.createElement(
@@ -40118,34 +40260,44 @@
 	          { show: this.state.showModal, onHide: this.close },
 	          _react2.default.createElement(
 	            _reactBootstrap.Modal.Header,
-	            { closeButton: true },
+	            { style: style.modal, closeButton: true },
 	            _react2.default.createElement(
 	              _reactBootstrap.Modal.Title,
-	              null,
+	              { style: style.modal },
 	              file.name
 	            )
 	          ),
 	          _react2.default.createElement(
 	            _reactBootstrap.Modal.Body,
-	            null,
-	            'Filesize: ',
-	            filesize,
-	            _react2.default.createElement('br', null),
-	            'Date: ',
-	            file.server_modified
+	            { style: style.modal },
+	            _react2.default.createElement(
+	              'div',
+	              { style: Object.assign({}, icon, iconStyle.default) },
+	              file.name
+	            ),
+	            _react2.default.createElement(
+	              'div',
+	              { style: style.modal },
+	              'Filesize: ',
+	              filesize,
+	              _react2.default.createElement('br', null),
+	              'Date: ',
+	              file.server_modified
+	            )
 	          ),
 	          _react2.default.createElement(
 	            _reactBootstrap.Modal.Footer,
-	            null,
+	            { style: style.modal },
+	            _react2.default.createElement('div', { className: 'spinner', style: { marginLeft: '50%' } }),
 	            _react2.default.createElement(
 	              'form',
-	              { action: endpoint, method: 'post', onSubmit: this.download },
-	              _react2.default.createElement('input', { type: 'submit', value: 'Download' }),
+	              { style: { float: 'right' }, action: endpoint, method: 'post', onSubmit: this.download },
+	              _react2.default.createElement('input', { className: 'btn btn-primary', type: 'submit', value: 'Download' }),
 	              _react2.default.createElement('input', { type: 'hidden', name: 'download', value: file.path_lower })
 	            ),
 	            _react2.default.createElement(
 	              _reactBootstrap.Button,
-	              { onClick: this.close },
+	              { style: { float: 'left' }, onClick: this.close },
 	              'Cancel'
 	            )
 	          )
@@ -40164,6 +40316,367 @@
 
 /***/ },
 /* 437 */
+/***/ function(module, exports) {
+
+	//fgnass.github.com/spin.js#v1.2.5
+	/**
+	 * Copyright (c) 2011 Felix Gnass [fgnass at neteye dot de]
+	 * Licensed under the MIT license
+	 */
+
+	var prefixes = ['webkit', 'Moz', 'ms', 'O']; /* Vendor prefixes */
+	var animations = {}; /* Animation rules keyed by their name */
+	var useCssAnimations;
+
+	/**
+	 * Utility function to create elements. If no tag name is given,
+	 * a DIV is created. Optionally properties can be passed.
+	 */
+	function createEl(tag, prop) {
+	  var el = document.createElement(tag || 'div');
+	  var n;
+
+	  for(n in prop) {
+	    el[n] = prop[n];
+	  }
+	  return el;
+	}
+
+	/**
+	 * Appends children and returns the parent.
+	 */
+	function ins(parent /* child1, child2, ...*/) {
+	  for (var i=1, n=arguments.length; i<n; i++) {
+	    parent.appendChild(arguments[i]);
+	  }
+	  return parent;
+	}
+
+	/**
+	 * Insert a new stylesheet to hold the @keyframe or VML rules.
+	 */
+	var sheet = function() {
+	  var el = createEl('style');
+	  ins(document.getElementsByTagName('head')[0], el);
+	  return el.sheet || el.styleSheet;
+	}();
+
+	/**
+	 * Creates an opacity keyframe animation rule and returns its name.
+	 * Since most mobile Webkits have timing issues with animation-delay,
+	 * we create separate rules for each line/segment.
+	 */
+	function addAnimation(alpha, trail, i, lines) {
+	  var name = ['opacity', trail, ~~(alpha*100), i, lines].join('-');
+	  var start = 0.01 + i/lines*100;
+	  var z = Math.max(1-(1-alpha)/trail*(100-start) , alpha);
+	  var prefix = useCssAnimations.substring(0, useCssAnimations.indexOf('Animation')).toLowerCase();
+	  var pre = prefix && '-'+prefix+'-' || '';
+
+	  if (!animations[name]) {
+	    sheet.insertRule(
+	      '@' + pre + 'keyframes ' + name + '{' +
+	      '0%{opacity:'+z+'}' +
+	      start + '%{opacity:'+ alpha + '}' +
+	      (start+0.01) + '%{opacity:1}' +
+	      (start+trail)%100 + '%{opacity:'+ alpha + '}' +
+	      '100%{opacity:'+ z + '}' +
+	      '}', 0);
+	    animations[name] = 1;
+	  }
+	  return name;
+	}
+
+	/**
+	 * Tries various vendor prefixes and returns the first supported property.
+	 **/
+	function vendor(el, prop) {
+	  var s = el.style;
+	  var pp;
+	  var i;
+
+	  if(s[prop] !== undefined) return prop;
+	  prop = prop.charAt(0).toUpperCase() + prop.slice(1);
+	  for(i=0; i<prefixes.length; i++) {
+	    pp = prefixes[i]+prop;
+	    if(s[pp] !== undefined) return pp;
+	  }
+	}
+
+	/**
+	 * Sets multiple style properties at once.
+	 */
+	function css(el, prop) {
+	  for (var n in prop) {
+	    el.style[vendor(el, n)||n] = prop[n];
+	  }
+	  return el;
+	}
+
+	/**
+	 * Fills in default values.
+	 */
+	function merge(obj) {
+	  for (var i=1; i < arguments.length; i++) {
+	    var def = arguments[i];
+	    for (var n in def) {
+	      if (obj[n] === undefined) obj[n] = def[n];
+	    }
+	  }
+	  return obj;
+	}
+
+	/**
+	 * Returns the absolute page-offset of the given element.
+	 */
+	function pos(el) {
+	  var o = {x:el.offsetLeft, y:el.offsetTop};
+	  while((el = el.offsetParent)) {
+	    o.x+=el.offsetLeft;
+	    o.y+=el.offsetTop;
+	  }
+	  return o;
+	}
+
+	var defaults = {
+	  lines: 12,            // The number of lines to draw
+	  length: 7,            // The length of each line
+	  width: 5,             // The line thickness
+	  radius: 10,           // The radius of the inner circle
+	  rotate: 0,            // rotation offset
+	  color: '#000',        // #rgb or #rrggbb
+	  speed: 1,             // Rounds per second
+	  trail: 100,           // Afterglow percentage
+	  opacity: 1/4,         // Opacity of the lines
+	  fps: 20,              // Frames per second when using setTimeout()
+	  zIndex: 2e9,          // Use a high z-index by default
+	  className: 'spinner', // CSS class to assign to the element
+	  top: 'auto',          // center vertically
+	  left: 'auto'          // center horizontally
+	};
+
+	/** The constructor */
+	var Spinner = function Spinner(o) {
+	  if (!this.spin) return new Spinner(o);
+	  this.opts = merge(o || {}, Spinner.defaults, defaults);
+	};
+
+	Spinner.defaults = {};
+	merge(Spinner.prototype, {
+	  spin: function(target) {
+	    this.stop();
+	    var self = this;
+	    var o = self.opts;
+	    var el = self.el = css(createEl(0, {className: o.className}), {position: 'relative', zIndex: o.zIndex});
+	    var mid = o.radius+o.length+o.width;
+	    var ep; // element position
+	    var tp; // target position
+
+	    if (target) {
+	      target.insertBefore(el, target.firstChild||null);
+	      tp = pos(target);
+	      ep = pos(el);
+	      css(el, {
+	        left: (o.left == 'auto' ? tp.x-ep.x + (target.offsetWidth >> 1) : o.left+mid) + 'px',
+	        top: (o.top == 'auto' ? tp.y-ep.y + (target.offsetHeight >> 1) : o.top+mid)  + 'px'
+	      });
+	    }
+
+	    el.setAttribute('aria-role', 'progressbar');
+	    self.lines(el, self.opts);
+
+	    if (!useCssAnimations) {
+	      // No CSS animation support, use setTimeout() instead
+	      var i = 0;
+	      var fps = o.fps;
+	      var f = fps/o.speed;
+	      var ostep = (1-o.opacity)/(f*o.trail / 100);
+	      var astep = f/o.lines;
+
+	      !function anim() {
+	        i++;
+	        for (var s=o.lines; s; s--) {
+	          var alpha = Math.max(1-(i+s*astep)%f * ostep, o.opacity);
+	          self.opacity(el, o.lines-s, alpha, o);
+	        }
+	        self.timeout = self.el && setTimeout(anim, ~~(1000/fps));
+	      }();
+	    }
+	    return self;
+	  },
+	  stop: function() {
+	    var el = this.el;
+	    if (el) {
+	      clearTimeout(this.timeout);
+	      if (el.parentNode) el.parentNode.removeChild(el);
+	      this.el = undefined;
+	    }
+	    return this;
+	  },
+	  lines: function(el, o) {
+	    var i = 0;
+	    var seg;
+
+	    function fill(color, shadow) {
+	      return css(createEl(), {
+	        position: 'absolute',
+	        width: (o.length+o.width) + 'px',
+	        height: o.width + 'px',
+	        background: color,
+	        boxShadow: shadow,
+	        transformOrigin: 'left',
+	        transform: 'rotate(' + ~~(360/o.lines*i+o.rotate) + 'deg) translate(' + o.radius+'px' +',0)',
+	        borderRadius: (o.width>>1) + 'px'
+	      });
+	    }
+	    for (; i < o.lines; i++) {
+	      seg = css(createEl(), {
+	        position: 'absolute',
+	        top: 1+~(o.width/2) + 'px',
+	        transform: o.hwaccel ? 'translate3d(0,0,0)' : '',
+	        opacity: o.opacity,
+	        animation: useCssAnimations && addAnimation(o.opacity, o.trail, i, o.lines) + ' ' + 1/o.speed + 's linear infinite'
+	      });
+	      if (o.shadow) ins(seg, css(fill('#000', '0 0 4px ' + '#000'), {top: 2+'px'}));
+	      ins(el, ins(seg, fill(o.color, '0 0 1px rgba(0,0,0,.1)')));
+	    }
+	    return el;
+	  },
+	  opacity: function(el, i, val) {
+	    if (i < el.childNodes.length) el.childNodes[i].style.opacity = val;
+	  }
+	});
+
+	/////////////////////////////////////////////////////////////////////////
+	// VML rendering for IE
+	/////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * Check and init VML support
+	 */
+	!function() {
+
+	  function vml(tag, attr) {
+	    return createEl('<' + tag + ' xmlns="urn:schemas-microsoft.com:vml" class="spin-vml">', attr);
+	  }
+
+	  var s = css(createEl('group'), {behavior: 'url(#default#VML)'});
+
+	  if (!vendor(s, 'transform') && s.adj) {
+
+	    // VML support detected. Insert CSS rule ...
+	    sheet.addRule('.spin-vml', 'behavior:url(#default#VML)');
+
+	    Spinner.prototype.lines = function(el, o) {
+	      var r = o.length+o.width;
+	      var s = 2*r;
+
+	      function grp() {
+	        return css(vml('group', {coordsize: s +' '+s, coordorigin: -r +' '+-r}), {width: s, height: s});
+	      }
+
+	      var margin = -(o.width+o.length)*2+'px';
+	      var g = css(grp(), {position: 'absolute', top: margin, left: margin});
+
+	      var i;
+
+	      function seg(i, dx, filter) {
+	        ins(g,
+	          ins(css(grp(), {rotation: 360 / o.lines * i + 'deg', left: ~~dx}),
+	            ins(css(vml('roundrect', {arcsize: 1}), {
+	                width: r,
+	                height: o.width,
+	                left: o.radius,
+	                top: -o.width>>1,
+	                filter: filter
+	              }),
+	              vml('fill', {color: o.color, opacity: o.opacity}),
+	              vml('stroke', {opacity: 0}) // transparent stroke to fix color bleeding upon opacity change
+	            )
+	          )
+	        );
+	      }
+
+	      if (o.shadow) {
+	        for (i = 1; i <= o.lines; i++) {
+	          seg(i, -2, 'progid:DXImageTransform.Microsoft.Blur(pixelradius=2,makeshadow=1,shadowopacity=.3)');
+	        }
+	      }
+	      for (i = 1; i <= o.lines; i++) seg(i);
+	      return ins(el, g);
+	    };
+	    Spinner.prototype.opacity = function(el, i, val, o) {
+	      var c = el.firstChild;
+	      o = o.shadow && o.lines || 0;
+	      if (c && i+o < c.childNodes.length) {
+	        c = c.childNodes[i+o]; c = c && c.firstChild; c = c && c.firstChild;
+	        if (c) c.opacity = val;
+	      }
+	    };
+	  }
+	  else {
+	    useCssAnimations = vendor(s, 'animation');
+	  }
+	}();
+
+	module.exports = Spinner;
+
+
+/***/ },
+/* 438 */
+/***/ function(module, exports) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	var DownloadFileStyle = exports.DownloadFileStyle = {
+	  default: {},
+	  imko: {
+	    border: 'solid #006ab2 1px',
+	    color: '#006ab2',
+	    fontWeight: 'bold',
+	    backgroundColor: 'white',
+	    margin: '10px 0px',
+	    padding: '0px'
+	  },
+	  modal: {
+	    fontWeight: 'bold',
+	    color: '#006ab2'
+	  }
+	};
+
+/***/ },
+/* 439 */
+/***/ function(module, exports) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	var extensions = exports.extensions = ['aac', 'aiff', 'ai', 'avi', 'bmp', 'c', 'cpp', 'css', 'dat', 'dmg', 'doc', 'docx', 'dotx', 'dwg', 'dxf', 'eps', 'exe', 'flv', 'gif', 'h', 'hpp', 'html', 'ics', 'iso', 'java', 'jpg', 'js', 'key', 'less', 'mid', 'mp3', 'mp4', 'mpg', 'msi', 'odf', 'ods', 'odt', 'otp', 'ots', 'ott', 'pdf', 'php', 'png', 'ppt', 'psd', 'py', 'qt', 'rar', 'rb', 'rtf', 'sass', 'scss', 'sql', 'tga', 'tgz', 'tiff', 'txt', 'wav', 'xls', 'xlsx', 'xml', 'yml', 'zip', '_blank'];
+
+	var _IconStyle = {
+	  default: {
+	    margin: '0px',
+	    padding: '20px 20px 20px 40px',
+	    fontWeight: 'bold',
+	    color: '#006ab2'
+	  }
+	};
+
+	for (var ext in extensions) {
+	  var e = extensions[ext];
+	  var bg = '#fdfdfd url(/dropbox/static/images/' + e + '.png) 5px center no-repeat';
+	  _IconStyle[e] = { background: bg };
+	}
+
+	var IconStyle = exports.IconStyle = _IconStyle;
+
+/***/ },
+/* 440 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -50204,6 +50717,99 @@
 	return jQuery;
 	} ) );
 
+
+/***/ },
+/* 441 */
+/***/ function(module, exports) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	var CollapseFolderStyle = exports.CollapseFolderStyle = {
+	  default: {},
+	  imko: {
+	    border: 'solid #006ab2 1px',
+	    margin: '15px',
+	    padding: '15px',
+	    borderRadius: '15px',
+	    cursor: 'pointer',
+	    textAlign: 'left'
+	  },
+	  open: {
+	    display: 'inline-block',
+	    fontSize: '26px',
+	    fontWeight: 'bold',
+	    marginLeft: '5px',
+	    marginRight: '20px',
+	    textAlign: 'center',
+	    verticalAlign: 'middle',
+	    width: '28px',
+	    height: '28px',
+	    borderRadius: '14px',
+	    color: 'white',
+	    backgroundColor: '#4170B5',
+	    lineHeight: '0.95em'
+	  },
+	  close: {
+	    display: 'inline-block',
+	    fontSize: '26px',
+	    fontWeight: 'bold',
+	    marginLeft: '5px',
+	    marginRight: '20px',
+	    textAlign: 'center',
+	    verticalAlign: 'middle',
+	    width: '28px',
+	    height: '28px',
+	    borderRadius: '14px',
+	    color: 'white',
+	    backgroundColor: '#4170B5',
+	    lineHeight: '1.1em'
+	  },
+	  collapse: {
+	    marginTop: '25px'
+	  }
+	};
+
+/***/ },
+/* 442 */
+/***/ function(module, exports) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	var CollapseFolderGroupStyle = exports.CollapseFolderGroupStyle = {
+	  default: {},
+	  imko: {
+	    margin: '10px 25px'
+	  }
+	};
+
+/***/ },
+/* 443 */
+/***/ function(module, exports) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	var DropboxContainerStyle = exports.DropboxContainerStyle = {
+	  default: {
+	    border: 'solid red 5px',
+	    color: 'green'
+	  },
+	  imko: {
+	    border: 'solid #ccc 1px',
+	    color: '#006ab2',
+	    fontWeight: 'bold',
+	    backgroundColor: 'white',
+	    textAlign: 'center'
+	  }
+	};
 
 /***/ }
 /******/ ]);
